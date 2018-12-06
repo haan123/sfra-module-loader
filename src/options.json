@@ -1,0 +1,23 @@
+{
+  "type": "object",
+  "properties": {
+    "context": {
+      "type": "string"
+    },
+    "cache": {
+      "type": "boolean"
+    },
+    "cartridges": {
+      "anyOf": [
+        { "type": "array" },
+        { "type": "string" }
+      ]
+    }
+  },
+  "errorMessages": {
+    "context": "should be {String} (https://github.com/haan123/sfra-module-loader#context)",
+    "cache": "should be {Boolean} (https://github.com/haan123/sfra-module-loader#cache)",
+    "cartridges": "should be {Array} or {String} (https://github.com/haan123/sfra-module-loader#cartridges)"
+  },
+  "additionalProperties": false
+}

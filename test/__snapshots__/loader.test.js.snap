@@ -1,0 +1,12 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Loader Defaults 1`] = `
+"import core from '*/core';
+import component from '*/component';
+
+export default () => {
+  core();
+  component();
+};
+"
+`;

@@ -1,0 +1,42 @@
+{
+  "name": "sfra-module-loader",
+  "version": "1.0.0",
+  "description": "sfra module loader for webpack",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "npm run build -- -w",
+    "build": "cross-env NODE_ENV=production babel src -d dist --ignore 'src/**/*.test.js' --copy-files",
+    "test": "jest --env=node",
+    "test:watch": "jest --env=node --watch",
+    "test:coverage": "jest --env=node --collectCoverageFrom='src/**/*.js' --coverage"
+  },
+  "keywords": [
+    "sfra",
+    "webpack"
+  ],
+  "author": "An Ha",
+  "license": "ISC",
+  "devDependencies": {
+    "@webpack-contrib/eslint-config-webpack": "^3.0.0",
+    "babel-cli": "^6.26.0",
+    "babel-eslint": "^10.0.1",
+    "babel-jest": "^23.6.0",
+    "babel-plugin-transform-object-rest-spread": "^6.26.0",
+    "babel-polyfill": "^6.26.0",
+    "babel-preset-env": "^1.7.0",
+    "cross-env": "^5.2.0",
+    "del": "^3.0.0",
+    "del-cli": "^1.1.0",
+    "eslint": "^5.9.0",
+    "eslint-config-webpack": "^1.2.5",
+    "eslint-plugin-import": "^2.14.0",
+    "jest": "^23.6.0",
+    "memory-fs": "^0.4.1",
+    "webpack": "^4.27.0"
+  },
+  "dependencies": {
+    "glob": "^7.1.3",
+    "loader-utils": "^1.1.0",
+    "schema-utils": "^1.0.0"
+  }
+}

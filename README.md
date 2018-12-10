@@ -5,6 +5,7 @@
 </div>
 
 [![npm][npm]][npm-url]
+[![deps][deps]][deps-url]
 
 # sfra-module-loader
 
@@ -186,5 +187,5 @@ Contributing is welcome.
 [npm]: https://img.shields.io/npm/v/sfra-module-loader.svg
 [npm-url]: https://npmjs.com/package/sfra-module-loader
 
-[deps]: https://david-dm.org/haan123/sfra-module-loader
+[deps]: https://david-dm.org/haan123/sfra-module-loader.svg
 [deps-url]: https://david-dm.org/haan123/sfra-module-loader

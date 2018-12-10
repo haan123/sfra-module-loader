@@ -1,6 +1,6 @@
 {
   "name": "sfra-module-loader",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "sfra module loader for webpack",
   "main": "dist/index.js",
   "scripts": {
@@ -14,7 +14,9 @@
     "sfra",
     "webpack"
   ],
-  "author": "An Ha",
+  "repository": "haan123/sfra-module-loader",
+  "author": "An Ha @haquangngocan",
+  "homepage": "https://github.com/haan123/sfra-module-loader",
   "license": "ISC",
   "devDependencies": {
     "@webpack-contrib/eslint-config-webpack": "^3.0.0",

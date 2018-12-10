@@ -4,6 +4,8 @@
   </a>
 </div>
 
+[![npm][npm]][npm-url]
+
 # sfra-module-loader
 
 A saleforce commerce cloud module loader for webpack based on the cartridge path
@@ -119,14 +121,14 @@ import mod from '*/component/mod'
 ...
 ```
 
-Loader will scan the cartriges from top most (left to right) cartridge in cartridge path
+Loader will scan all cartriges in project repositoty from top most (or left to right) cartridge in cartridge path
 
 ### `cache`
 
 Type: `Boolean`
 Default: `true`
 
-If `true`, loader will scan and store cartridge directories on first run
+If `true`, loader will scan and store cartridge location on first run and use them for next run
 
 ```js
 // webpack.config.js
@@ -181,3 +183,8 @@ module from core
 
 Contributing is welcome.
 
+[npm]: https://img.shields.io/npm/v/sfra-module-loader.svg
+[npm-url]: https://npmjs.com/package/sfra-module-loader
+
+[deps]: https://david-dm.org/haan123/sfra-module-loader
+[deps-url]: https://david-dm.org/haan123/sfra-module-loader

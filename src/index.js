@@ -65,7 +65,7 @@ export default function loader(source) {
     }
 
     if (!options.context) {
-        options.context = path.resolve(__dirname, '../');
+        options.context = path.resolve(this.rootContext, '../');
     }
 
     if (typeof cartridges === 'string') {

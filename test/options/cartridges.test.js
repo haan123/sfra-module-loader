@@ -16,6 +16,7 @@ describe('Options', () => {
           options: {
             cartridges: [
               'storefront',
+              'pluggin',
               'core'
             ]
           }
@@ -34,7 +35,7 @@ describe('Options', () => {
         loader: {
           test: /(js)/,
           options: {
-            cartridges: 'storefront:core'
+            cartridges: 'storefront:pluggin:core'
           }
         }
       };

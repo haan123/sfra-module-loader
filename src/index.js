@@ -7,6 +7,7 @@ import checkExist from './lib/checkExist';
 
 const rpath = /require\(([^()]+)\)|import(.*)from\s*([^;\t\r\n\s]+)/g;
 const rquote = /['"]/g;
+const rcartridge = /cartridges\/([^/]+)\/.+\/js\/(.*)/;
 
 let cartridgesPath;
 
@@ -50,6 +51,19 @@ function cleanPath(p = '') {
     return p.replace(rquote, '').trim();
 }
 
+/**
+ * Get module path
+ * @param {string} name - cartridge name
+ * @param {string} filePath - file path
+ * @param {Array} cartridgesPath - cartridges path
+ * @return {string} - cleaned path
+ */
+function getModulePath({ name, folder = '', filePath, cartridges }) {
+  const cartridge = getCartridgePath(name, cartridges);
+
+  return path.resolve(`${cartridge}/cartridge/client/default/js/${folder}`, filePath);
+}
+
 export default function loader(source) {
     let src = source;
 
@@ -59,6 +73,9 @@ export default function loader(source) {
 
     let cartridges = options.cartridges;
     let cache = options.cache;
+    let match = rcartridge.exec(this.resourcePath);
+    let curCartridge = match && match[1];
+    const curFilePath = match && match[2];
 
     if (cache !== false) {
       cache = true;
@@ -84,21 +101,39 @@ export default function loader(source) {
                 const p = p1 || p3;
                 const isImport = !!p3;
                 const varName = m2 && m2.trim();
+                const isRel = p.startsWith('.');
 
-                if (p && p.startsWith('*')) {
-                    for (let i = 0; i < cartridges.length; i++) {
-                        const name = cartridges[i];
-                        const cartridge = getCartridgePath(name, cartridgesPath);
+                if (p && (p.startsWith('*') || isRel)) {
+                  let idx = 0;
 
-                        let mod = path.resolve(`${cartridge}/cartridge/client/default/js/${p.slice(2)}`);
+                  if (curCartridge) {
+                    const curMod = getModulePath({ name: curCartridge, filePath: p.slice(2), cartridges: cartridgesPath});
 
-                        if (checkExist(mod)) {
-                            return updateRequiredPath(mod, {
-                                isImport,
-                                varName
-                            });
-                        }
+                    // is self reference?
+                    if (this.resourcePath.indexOf(curMod) !== -1) {
+                      idx = cartridges.indexOf(curCartridge) + 1;
                     }
+                  }
+
+                  const cars = cartridges.slice(idx);
+
+                  for (let i = 0; i < cars.length; i++) {
+                      const name = cars[i];
+
+                      let mod;
+                      if (isRel && curFilePath) {
+                        mod = getModulePath({name, folder: curFilePath.slice(0, curFilePath.lastIndexOf('/')), filePath: p, cartridges: cartridgesPath});
+                      } else {
+                        mod = getModulePath({ name, filePath: p.slice(2), cartridges: cartridgesPath });
+                      }
+
+                      if (checkExist(mod) && this.resourcePath.indexOf(mod) < 0) {
+                          return updateRequiredPath(mod, {
+                              isImport,
+                              varName
+                          });
+                      }
+                  }
                 }
 
                 return updateRequiredPath(p, {
@@ -108,6 +143,6 @@ export default function loader(source) {
             });
         }
     }
-
+    console.log(src)
     return src;
 };

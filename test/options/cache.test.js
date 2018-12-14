@@ -12,6 +12,7 @@ describe('Options', () => {
           options: {
             cartridges: [
               'storefront',
+              'pluggin',
               'core'
             ],
             cache: false
@@ -33,6 +34,7 @@ describe('Options', () => {
           options: {
             cartridges: [
               'storefront',
+              'pluggin',
               'core'
             ],
             cache: true

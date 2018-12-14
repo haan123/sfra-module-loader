@@ -5,3 +5,5 @@ export default () => {
   core();
   component();
 };
+
+

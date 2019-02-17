@@ -1,6 +1,9 @@
 {
   "type": "object",
   "properties": {
+    "alias": {
+      "type": "object"
+    },
     "context": {
       "type": "string"
     },
@@ -18,6 +21,7 @@
     }
   },
   "errorMessages": {
+    "alias": "should be {Object} (https://github.com/haan123/sfra-module-loader#alias)",
     "context": "should be {String} (https://github.com/haan123/sfra-module-loader#context)",
     "baseCartridge": "should be {String} (https://github.com/haan123/sfra-module-loader#baseCartridge)",
     "cache": "should be {Boolean} (https://github.com/haan123/sfra-module-loader#cache)",

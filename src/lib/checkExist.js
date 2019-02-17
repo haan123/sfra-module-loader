@@ -5,29 +5,29 @@
  * @return {boolean} - return true if module is deleted
  */
 export function invalidateRequire(p, req) {
-    const keys = Object.keys(req.cache);
+  const keys = Object.keys(req.cache);
 
-    for (let i = 0; i < keys.length; i++) {
-        const key = keys[i];
+  for (let i = 0; i < keys.length; i++) {
+    const key = keys[i];
 
-        if (key.indexOf(p) !== -1) {
-            delete req.cache[key];
-            return true;
-        }
+    if (key.indexOf(p) !== -1) {
+      delete req.cache[key];
+      return true;
     }
+  }
 
-    return false;
+  return false;
 }
 
 export default (mod) => {
-    try {
-        require.resolve(mod);
+  try {
+    require.resolve(mod);
 
-        // Remove cached copy for future checks
-        invalidateRequire(mod, require);
-    } catch (err) {
-        return false;
-    }
+    // Remove cached copy for future checks
+    invalidateRequire(mod, require);
+  } catch (err) {
+    return false;
+  }
 
-    return true;
+  return true;
 };

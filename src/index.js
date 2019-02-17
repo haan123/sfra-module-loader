@@ -1,15 +1,15 @@
-import path from 'path';
-import glob from 'glob';
-import loaderUtils from 'loader-utils';
-import validateOptions from 'schema-utils';
-import schema from './options.json';
-import checkExist from './lib/checkExist';
+const path = require('path');
+const glob = require('glob');
+const loaderUtils = require('loader-utils');
+const validateOptions = require('schema-utils');
+const schema = require('./options.json');
+const checkExist = require('./lib/checkExist');
 
-const rpath = /require\(([^()]+)\)|import(.*)from\s*([^;\t\r\n\s]+)/g;
+const rpath = /([\w_$]*)[\s=]*require\(([^()]+)\)|import(.*)from\s*([^;\t\r\n\s]+)/g;
 const rquote = /['"]/g;
 const rcartridge = /cartridges\/([^/]+)\/.+\/js\/(.*)/;
 
-let cartridgesPath;
+let cartridgePaths;
 
 /**
  * Get cartridges path
@@ -17,7 +17,7 @@ let cartridgesPath;
  * @param {string} cartridges - cartridges name
  * @return {Array} - return list of cartridges path
  */
-function findCartridgesPath(context, cartridges) {
+function findCartridgePaths(context, cartridges) {
     return glob.sync(`${context}/**/cartridges/+(${cartridges.join('|')})/`, {
         ignore: [`**/cartridges/!(${cartridges.join('|')})/cartridge/**`, '**/node_modules/**']
     });
@@ -28,8 +28,8 @@ function findCartridgesPath(context, cartridges) {
  * @param {string} filePath - file path
  * @return {string} - return modified required path
  */
-function updateRequiredPath(filePath, { isImport, varName }) {
-    return !isImport ? `require('${filePath}')` : `import ${varName} from '${filePath}'`;
+function updateRequiredPath(filePath, { isImport, varName } = {}) {
+    return !isImport ? `${varName ? (varName + ' = ') : ''}require(${filePath})` : `import ${varName} from ${filePath}`;
 }
 
 /**
@@ -53,32 +53,54 @@ function cleanPath(p = '') {
 
 /**
  * Get module path
- * @param {string} name - cartridge name
  * @param {string} filePath - file path
- * @param {Array} cartridgesPath - cartridges path
+ * @param {Array} cartridge - cartridges path
  * @return {string} - cleaned path
  */
-function getModulePath({ name, folder = '', filePath, cartridges }) {
-  const cartridge = getCartridgePath(name, cartridges);
-
-  return path.resolve(`${cartridge}/cartridge/client/default/js/${folder}`, filePath);
+function getModulePath({ cartridge, filePath }) {
+    return path.resolve(`${cartridge}/cartridge/client/default/js/`, filePath);
 }
 
-export default function loader(source) {
+/**
+ * Get closest module path
+ * @param {Array} cartridges cartridges
+ * @param {string} filePath file path
+ * @returns {string} module path
+ */
+function getClosestModulePath(cartridges, filePath) {
+    for (let i = 0; i < cartridges.length; i++) {
+        const cartridgeName = cartridges[i];
+        const cartridge = getCartridgePath(cartridgeName, cartridgePaths);
+        const modulePath = getModulePath({ cartridge, filePath });
+        const isModuleExist = checkExist(modulePath);
+
+        if (isModuleExist) {
+            return modulePath;
+        }
+    }
+
+    return '';
+}
+
+module.exports = function loader(source) {
     let src = source;
 
     const options = loaderUtils.getOptions(this);
 
     validateOptions(schema, options, 'sfra module loader');
 
-    let cartridges = options.cartridges;
+    if (!options.alias) {
+        options.alias = {};
+    }
+
+    const rmark = new RegExp(`^(?:(\\*)|(\\.)|(${Object.keys(options.alias).join('|')}))`);
+    let cartridges = options.cartridges || [];
     let cache = options.cache;
-    let match = rcartridge.exec(this.resourcePath);
-    let curCartridge = match && match[1];
-    const curFilePath = match && match[2];
+    let cartridgeMatcher = rcartridge.exec(this.resourcePath);
+    const isNodeModule = this.resourcePath.indexOf('node_modules') !== -1;
 
     if (cache !== false) {
-      cache = true;
+        cache = true;
     }
 
     if (!options.context) {
@@ -86,63 +108,72 @@ export default function loader(source) {
     }
 
     if (typeof cartridges === 'string') {
-      cartridges = cartridges.split(':');
+        cartridges = cartridges.split(':');
     }
 
-    if (cartridges && cartridges.length) {
-        if (!cartridgesPath || !cache) {
-            cartridgesPath = findCartridgesPath(options.context, cartridges);
+    if (!isNodeModule && cartridges.length && cartridgeMatcher) {
+        const [, curCartridge, curFilePath] = cartridgeMatcher;
+
+        if (!cartridgePaths || !cache) {
+            cartridgePaths = findCartridgePaths(options.context, cartridges);
         }
 
-        if (cartridgesPath.length) {
-            src = src.replace(rpath, (full, m1, m2, m3) => {
-                const p1 = cleanPath(m1);
-                const p3 = cleanPath(m3);
+
+        if (cartridgePaths.length) {
+            if (src.includes('module.superModule')) {
+                const modulePath = getClosestModulePath(cartridges.slice(cartridges.indexOf(curCartridge) + 1), curFilePath);
+
+                if (modulePath) {
+                    src = `module.superModule = ${updateRequiredPath(loaderUtils.stringifyRequest(this, modulePath))};\n${src}`;
+                }
+            }
+
+            src = src.replace(rpath, (full, m1, m2, m3, m4) => {
+                const p1 = cleanPath(m2);
+                const p3 = cleanPath(m4);
                 const p = p1 || p3;
                 const isImport = !!p3;
-                const varName = m2 && m2.trim();
-                const isRel = p.startsWith('.');
+                const varName = m1 || (m3 && m3.trim());
+                const marker = rmark.exec(p);
+                let reqPath;
+                let filePath;
 
-                if (p && (p.startsWith('*') || isRel)) {
-                  let idx = 0;
+                if (marker) {
+                    switch (marker[0]) {
+                        case '*':
+                            filePath = p.slice(2);
+                            break;
+                        case '.':
+                            filePath = `${path.dirname(curFilePath)}/${p}`;
+                            break;
+                        default:
+                            filePath = p.slice(marker[0].length + 1);
+                    }
 
-                  if (curCartridge) {
-                    const curMod = getModulePath({ name: curCartridge, filePath: p.slice(2), cartridges: cartridgesPath});
+                    let idx = 0;
+                    const isSameModule = this.resourcePath.indexOf(filePath) !== -1;
 
                     // is self reference?
-                    if (this.resourcePath.indexOf(curMod) !== -1) {
-                      idx = cartridges.indexOf(curCartridge) + 1;
+                    if (isSameModule) {
+                        idx = cartridges.indexOf(curCartridge) + 1;
                     }
-                  }
 
-                  const cars = cartridges.slice(idx);
+                    const modulePath = getClosestModulePath(cartridges.slice(idx), filePath);
 
-                  for (let i = 0; i < cars.length; i++) {
-                      const name = cars[i];
+                    if (modulePath) {
+                        reqPath = updateRequiredPath(loaderUtils.stringifyRequest(this, modulePath), {
+                            isImport,
+                            varName
+                        });
+                    }
 
-                      let mod;
-                      if (isRel && curFilePath) {
-                        mod = getModulePath({name, folder: curFilePath.slice(0, curFilePath.lastIndexOf('/')), filePath: p, cartridges: cartridgesPath});
-                      } else {
-                        mod = getModulePath({ name, filePath: p.slice(2), cartridges: cartridgesPath });
-                      }
-
-                      if (checkExist(mod) && this.resourcePath.indexOf(mod) < 0) {
-                          return updateRequiredPath(mod, {
-                              isImport,
-                              varName
-                          });
-                      }
-                  }
+                    return reqPath;
                 }
 
-                return updateRequiredPath(p, {
-                    isImport,
-                    varName
-                });
+                return full;
             });
         }
     }
-    console.log(src)
+
     return src;
 };

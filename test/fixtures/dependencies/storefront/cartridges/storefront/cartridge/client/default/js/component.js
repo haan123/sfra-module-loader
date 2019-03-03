@@ -1,9 +1,7 @@
-const component = require('*/component');
-const pluggin = require('*/pluggin');
+const component = module.superModule;
 
 export default function () {
   component();
-  pluggin();
 
   return 'client component';
 };

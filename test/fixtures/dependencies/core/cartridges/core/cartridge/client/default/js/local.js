@@ -1,3 +1,3 @@
 module.exports = function () {
-  return 'core local component';
+  return 'core local';
 };

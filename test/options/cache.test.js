@@ -10,6 +10,10 @@ describe('Options', () => {
         loader: {
           test: /(js)/,
           options: {
+            alias: {
+              pluggin: 'pluggin',
+              core: 'core'
+            },
             cartridges: [
               'storefront',
               'pluggin',
@@ -32,6 +36,10 @@ describe('Options', () => {
         loader: {
           test: /(js)/,
           options: {
+            alias: {
+              pluggin: 'pluggin',
+              core: 'core'
+            },
             cartridges: [
               'storefront',
               'pluggin',

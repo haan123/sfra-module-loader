@@ -1,9 +1,9 @@
-const path = require('path');
-const glob = require('glob');
-const loaderUtils = require('loader-utils');
-const validateOptions = require('schema-utils');
-const schema = require('./options.json');
-const checkExist = require('./lib/checkExist');
+import path from 'path';
+import glob from 'glob';
+import loaderUtils from 'loader-utils';
+import validateOptions from 'schema-utils';
+import schema from './options.json';
+import checkExist from './lib/checkExist';
 
 const rpath = /([\w_$]*)[\s=]*require\(([^()]+)\)|import(.*)from\s*([^;\t\r\n\s]+)/g;
 const rquote = /['"]/g;
@@ -18,9 +18,9 @@ let cartridgePaths;
  * @return {Array} - return list of cartridges path
  */
 function findCartridgePaths(context, cartridges) {
-    return glob.sync(`${context}/**/cartridges/+(${cartridges.join('|')})/`, {
-        ignore: [`**/cartridges/!(${cartridges.join('|')})/cartridge/**`, '**/node_modules/**']
-    });
+  return glob.sync(`${context}/**/cartridges/+(${cartridges.join('|')})/`, {
+    ignore: [`**/cartridges/!(${cartridges.join('|')})/cartridge/**`, '**/node_modules/**']
+  });
 }
 
 /**
@@ -29,7 +29,7 @@ function findCartridgePaths(context, cartridges) {
  * @return {string} - return modified required path
  */
 function updateRequiredPath(filePath, { isImport, varName } = {}) {
-    return !isImport ? `${varName ? (varName + ' = ') : ''}require(${filePath})` : `import ${varName} from ${filePath}`;
+  return !isImport ? `${varName ? (varName + ' = ') : ''}require(${filePath})` : `import ${varName} from ${filePath}`;
 }
 
 /**
@@ -39,7 +39,7 @@ function updateRequiredPath(filePath, { isImport, varName } = {}) {
  * @return {string} - cartridge path
  */
 function getCartridgePath(name, paths) {
-    return paths.find((p) => p.indexOf(name) !== -1);
+  return paths.find((p) => p.indexOf(name) !== -1);
 }
 
 /**
@@ -48,7 +48,7 @@ function getCartridgePath(name, paths) {
  * @return {string} - cleaned path
  */
 function cleanPath(p = '') {
-    return p.replace(rquote, '').trim();
+  return p.replace(rquote, '').trim();
 }
 
 /**
@@ -59,7 +59,7 @@ function cleanPath(p = '') {
  * @return {string} - cleaned path
  */
 function getModulePath({ cartridge, filePath, locale }) {
-    return path.resolve(`${cartridge}/cartridge/client/${locale}/js`, filePath);
+  return path.resolve(`${cartridge}/cartridge/client/${locale}/js`, filePath);
 }
 
 /**
@@ -69,127 +69,125 @@ function getModulePath({ cartridge, filePath, locale }) {
  * @returns {string} module path
  */
 function getClosestModulePath({ cartridges, filePath, locale }) {
-    for (let i = 0; i < cartridges.length; i++) {
-        const cartridgeName = cartridges[i];
-        const cartridge = getCartridgePath(cartridgeName, cartridgePaths);
-        const modulePath = getModulePath({ cartridge, filePath, locale });
-        const isModuleExist = checkExist(modulePath);
+  let ret = '';
 
-        if (isModuleExist) {
-            return modulePath;
-        }
+  for (let i = 0; i < cartridges.length; i++) {
+    const cartridgeName = cartridges[i];
+    const cartridge = getCartridgePath(cartridgeName, cartridgePaths);
+    const modulePath = getModulePath({ cartridge, filePath, locale });
+    const isModuleExist = checkExist(modulePath);
+
+    if (isModuleExist) {
+      ret = modulePath;
+      break;
     }
+  }
 
-    return '';
+  return ret;
 }
 
 module.exports = function loader(source) {
-    let src = source;
+  let src = source;
 
-    const options = loaderUtils.getOptions(this);
+  const options = loaderUtils.getOptions(this);
 
-    validateOptions(schema, options, 'sfra module loader');
+  validateOptions(schema, options, 'sfra module loader');
 
-    if (!options.alias) {
-        options.alias = {};
+  if (!options.alias) {
+    options.alias = {};
+  }
+
+  const rmark = new RegExp(`^(?:(\\*)|(\\.)|((?:${Object.keys(options.alias).join('|')}):?))`);
+  let cartridges = options.cartridges || [];
+  let cache = options.cache;
+  let cartridgeMatcher = rcartridge.exec(this.resourcePath.replace(/\\/g, path.sep));
+  const isNodeModule = this.resourcePath.indexOf('node_modules') !== -1;
+
+  if (cache !== false) {
+    cache = true;
+  }
+
+  if (!options.context) {
+    options.context = path.resolve(this.rootContext, '../');
+  }
+
+  if (typeof cartridges === 'string') {
+    cartridges = cartridges.split(':');
+  }
+
+  if (!isNodeModule && cartridges.length && cartridgeMatcher) {
+    const [, curCartridge, locale, curFilePath] = cartridgeMatcher;
+
+    if (!cartridgePaths || !cache) {
+      cartridgePaths = findCartridgePaths(options.context, cartridges);
     }
 
-    const rmark = new RegExp(`^(?:(\\*)|(\\.)|((?:${Object.keys(options.alias).join('|')}):?))`);
-    let cartridges = options.cartridges || [];
-    let cache = options.cache;
-    let cartridgeMatcher = rcartridge.exec(this.resourcePath.replace(/\\/g, path.sep));
-    const isNodeModule = this.resourcePath.indexOf('node_modules') !== -1;
+    if (cartridgePaths.length) {
+      if (src.includes('module.superModule')) {
+        const modulePath = getClosestModulePath({
+          cartridges: cartridges.slice(cartridges.indexOf(curCartridge) + 1),
+          filePath: curFilePath,
+          locale
+        });
 
-    if (cache !== false) {
-        cache = true;
-    }
+        src = `module.superModule = ${modulePath ? updateRequiredPath(loaderUtils.stringifyRequest(this, modulePath)) : null};\n${src}`;
+      }
 
-    if (!options.context) {
-        options.context = path.resolve(this.rootContext, '../');
-    }
+      src = src.replace(rpath, (full, m1, m2, m3, m4) => {
+        const p1 = cleanPath(m2);
+        const p3 = cleanPath(m4);
+        const p = p1 || p3;
+        const isImport = !!p3;
+        const varName = m1 || (m3 && m3.trim());
+        const markerMatcher = rmark.exec(p);
+        let reqPath;
+        let filePath;
 
-    if (typeof cartridges === 'string') {
-        cartridges = cartridges.split(':');
-    }
+        if (markerMatcher) {
+          const marker = markerMatcher[0];
+          const isDirect = marker.includes(':');
 
-    if (!isNodeModule && cartridges.length && cartridgeMatcher) {
-        const [, curCartridge, locale, curFilePath] = cartridgeMatcher;
+          switch (marker) {
+            case '*':
+              filePath = p.slice(2);
+              break;
+            case '.':
+              filePath = `${path.dirname(curFilePath)}/${p}`;
+              break;
+            default:
+              filePath = p.slice(isDirect ? marker.length : marker.length + 1);
+          }
 
-        if (!cartridgePaths || !cache) {
-            cartridgePaths = findCartridgePaths(options.context, cartridges);
+          let idx = 0;
+          const isSameModule = this.resourcePath.indexOf(filePath) !== -1;
+
+          // is self reference?
+          if (isSameModule) {
+            idx = cartridges.indexOf(curCartridge) + 1;
+          }
+
+          if (marker.includes(':')) {
+            idx = cartridges.indexOf(options.alias[marker.split(':')[0]]);
+          }
+
+          const modulePath = getClosestModulePath({
+            cartridges: cartridges.slice(idx),
+            filePath,
+            locale
+          });
+
+          reqPath = updateRequiredPath(loaderUtils.stringifyRequest(this, modulePath || full), {
+            isImport,
+            varName
+          });
+
+          return reqPath;
         }
 
-
-        if (cartridgePaths.length) {
-            if (src.includes('module.superModule')) {
-                const modulePath = getClosestModulePath({
-                    cartridges: cartridges.slice(cartridges.indexOf(curCartridge) + 1),
-                    filePath: curFilePath,
-                    locale
-                });
-
-                if (modulePath) {
-                    src = `module.superModule = ${updateRequiredPath(loaderUtils.stringifyRequest(this, modulePath))};\n${src}`;
-                }
-            }
-
-            src = src.replace(rpath, (full, m1, m2, m3, m4) => {
-                const p1 = cleanPath(m2);
-                const p3 = cleanPath(m4);
-                const p = p1 || p3;
-                const isImport = !!p3;
-                const varName = m1 || (m3 && m3.trim());
-                const markerMatcher = rmark.exec(p);
-                let reqPath;
-                let filePath;
-
-                if (markerMatcher) {
-                    const marker = markerMatcher[0];
-                    const isDirect = marker.includes(':');
-
-                    switch (marker) {
-                        case '*':
-                            filePath = p.slice(2);
-                            break;
-                        case '.':
-                            filePath = `${path.dirname(curFilePath)}/${p}`;
-                            break;
-                        default:
-                            filePath = p.slice(isDirect ? marker.length : marker.length + 1);
-                    }
-
-                    let idx = 0;
-                    const isSameModule = this.resourcePath.indexOf(filePath) !== -1;
-
-                    // is self reference?
-                    if (isSameModule) {
-                        idx = cartridges.indexOf(curCartridge) + 1;
-                    }
-
-                    if (marker.includes(':')) {
-                        idx = cartridges.indexOf(options.alias[marker.split(':')[0]]);
-                    }
-
-                    const modulePath = getClosestModulePath({
-                        cartridges: cartridges.slice(idx),
-                        filePath,
-                        locale
-                    });
-
-                    if (modulePath) {
-                        reqPath = updateRequiredPath(loaderUtils.stringifyRequest(this, modulePath), {
-                            isImport,
-                            varName
-                        });
-                    }
-
-                    return reqPath;
-                }
-
-                return full;
-            });
-        }
+        return full;
+      });
     }
-
-    return src;
+  }
+console.log(src, this.resourcePath)
+  return src;
 };

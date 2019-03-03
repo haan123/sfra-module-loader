@@ -142,6 +142,28 @@ If `true`, loader will scan and store cartridge location on first run and use th
 }
 ```
 
+### `alias`
+
+Type: `Object`
+
+If configured, loader will replace all request that star with the alias name with closest existing ancestor module   
+
+```js
+// webpack.config.js
+{
+  loader: 'sfra-module-loader',
+  options: {
+    ...
+    alias: {
+      core: 'core',
+    },
+    cartridges: 'storefront:core'
+  }
+}
+```
+
+To driect request to an ancestor module, use colon `:` after alias name (e.g, `core:abc/mod`)
+
 ## Examples
 
 The following examples show how one might use `sfra-module-loader` and what the result
@@ -155,11 +177,26 @@ export default () => {
 ```
 
 ```js
+// /pluggin/js/components/mod.js 
+const baseModule = module.superModule; // -> /core/js/components/mod.js
+
+export default () => {
+  baseModule();
+
+  console.log('module from pluggin');
+}
+```
+
+```js
 // /storefront/main.js
-import mod from '*/components/mod'
+import mod1 from '*/components/mod' // -> /pluggin/js/components/mod.js
+import mod2 from 'core/components/mod' // -> /pluggin/js/components/mod.js
+import mod3 from 'core:components/mod' // -> /core/js/components/mod.js
 
 export default () => {
   mod();
+  mod1();
+  mod3();
 }
 ```
 
@@ -168,6 +205,9 @@ export default () => {
 {
   loader: 'sfra-module-loader',
   options: {
+    alias: {
+      core: 'core',
+    },
     cartridges: 'storefront:core',
     context: path.resolve(__dirname, '../')
   }

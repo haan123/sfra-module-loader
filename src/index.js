@@ -7,7 +7,7 @@ const checkExist = require('./lib/checkExist');
 
 const rpath = /([\w_$]*)[\s=]*require\(([^()]+)\)|import(.*)from\s*([^;\t\r\n\s]+)/g;
 const rquote = /['"]/g;
-const rcartridge = /cartridges\/([^/]+)\/.+\/js\/(.*)/;
+const rcartridge = /cartridges\/([^/]+)\/.+\/([^/]+)\/js\/(.*)/;
 
 let cartridgePaths;
 
@@ -53,12 +53,13 @@ function cleanPath(p = '') {
 
 /**
  * Get module path
- * @param {string} filePath - file path
  * @param {Array} cartridge - cartridges path
+ * @param {string} filePath - file path
+ * @param {string} locale - locale
  * @return {string} - cleaned path
  */
-function getModulePath({ cartridge, filePath }) {
-    return path.resolve(`${cartridge}/cartridge/client/default/js/`, filePath);
+function getModulePath({ cartridge, filePath, locale }) {
+    return path.resolve(`${cartridge}/cartridge/client/${locale}/js`, filePath);
 }
 
 /**
@@ -67,11 +68,11 @@ function getModulePath({ cartridge, filePath }) {
  * @param {string} filePath file path
  * @returns {string} module path
  */
-function getClosestModulePath(cartridges, filePath) {
+function getClosestModulePath({ cartridges, filePath, locale }) {
     for (let i = 0; i < cartridges.length; i++) {
         const cartridgeName = cartridges[i];
         const cartridge = getCartridgePath(cartridgeName, cartridgePaths);
-        const modulePath = getModulePath({ cartridge, filePath });
+        const modulePath = getModulePath({ cartridge, filePath, locale });
         const isModuleExist = checkExist(modulePath);
 
         if (isModuleExist) {
@@ -93,10 +94,10 @@ module.exports = function loader(source) {
         options.alias = {};
     }
 
-    const rmark = new RegExp(`^(?:(\\*)|(\\.)|(${Object.keys(options.alias).join('|')}))`);
+    const rmark = new RegExp(`^(?:(\\*)|(\\.)|((?:${Object.keys(options.alias).join('|')}):?))`);
     let cartridges = options.cartridges || [];
     let cache = options.cache;
-    let cartridgeMatcher = rcartridge.exec(this.resourcePath);
+    let cartridgeMatcher = rcartridge.exec(this.resourcePath.replace(/\\/g, path.sep));
     const isNodeModule = this.resourcePath.indexOf('node_modules') !== -1;
 
     if (cache !== false) {
@@ -112,7 +113,7 @@ module.exports = function loader(source) {
     }
 
     if (!isNodeModule && cartridges.length && cartridgeMatcher) {
-        const [, curCartridge, curFilePath] = cartridgeMatcher;
+        const [, curCartridge, locale, curFilePath] = cartridgeMatcher;
 
         if (!cartridgePaths || !cache) {
             cartridgePaths = findCartridgePaths(options.context, cartridges);
@@ -121,7 +122,11 @@ module.exports = function loader(source) {
 
         if (cartridgePaths.length) {
             if (src.includes('module.superModule')) {
-                const modulePath = getClosestModulePath(cartridges.slice(cartridges.indexOf(curCartridge) + 1), curFilePath);
+                const modulePath = getClosestModulePath({
+                    cartridges: cartridges.slice(cartridges.indexOf(curCartridge) + 1),
+                    filePath: curFilePath,
+                    locale
+                });
 
                 if (modulePath) {
                     src = `module.superModule = ${updateRequiredPath(loaderUtils.stringifyRequest(this, modulePath))};\n${src}`;
@@ -134,12 +139,15 @@ module.exports = function loader(source) {
                 const p = p1 || p3;
                 const isImport = !!p3;
                 const varName = m1 || (m3 && m3.trim());
-                const marker = rmark.exec(p);
+                const markerMatcher = rmark.exec(p);
                 let reqPath;
                 let filePath;
 
-                if (marker) {
-                    switch (marker[0]) {
+                if (markerMatcher) {
+                    const marker = markerMatcher[0];
+                    const isDirect = marker.includes(':');
+
+                    switch (marker) {
                         case '*':
                             filePath = p.slice(2);
                             break;
@@ -147,7 +155,7 @@ module.exports = function loader(source) {
                             filePath = `${path.dirname(curFilePath)}/${p}`;
                             break;
                         default:
-                            filePath = p.slice(marker[0].length + 1);
+                            filePath = p.slice(isDirect ? marker.length : marker.length + 1);
                     }
 
                     let idx = 0;
@@ -158,7 +166,15 @@ module.exports = function loader(source) {
                         idx = cartridges.indexOf(curCartridge) + 1;
                     }
 
-                    const modulePath = getClosestModulePath(cartridges.slice(idx), filePath);
+                    if (marker.includes(':')) {
+                        idx = cartridges.indexOf(options.alias[marker.split(':')[0]]);
+                    }
+
+                    const modulePath = getClosestModulePath({
+                        cartridges: cartridges.slice(idx),
+                        filePath,
+                        locale
+                    });
 
                     if (modulePath) {
                         reqPath = updateRequiredPath(loaderUtils.stringifyRequest(this, modulePath), {

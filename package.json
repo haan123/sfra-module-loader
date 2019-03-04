@@ -1,6 +1,6 @@
 {
   "name": "sfra-module-loader",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "sfra module loader for webpack",
   "main": "dist/index.js",
   "scripts": {

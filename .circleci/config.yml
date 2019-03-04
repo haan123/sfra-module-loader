@@ -1,0 +1,22 @@
+version: 2
+jobs:
+  test:
+    steps:
+      - checkout
+      - run:
+        name: Install Latest NPM.
+        command: npm i -g npm@latest
+      - run:
+        name: NPM Install.
+        command: npm ci
+      - run:
+        name: Run Test.
+        command: npm run test
+      - run:
+        name: Run Test Coverage.
+        command: npm run test:coverage
+workflows:
+  version: 2
+  build_and_test:
+    jobs:
+      - test

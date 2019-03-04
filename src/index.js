@@ -188,6 +188,6 @@ module.exports = function loader(source) {
       });
     }
   }
-
+console.log(src, this.resourcePath)
   return src;
 };

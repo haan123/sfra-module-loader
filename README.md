@@ -6,6 +6,7 @@
 
 [![npm][npm]][npm-url]
 [![deps][deps]][deps-url]
+[![tests][tests]][tests-url]
 
 # sfra-module-loader
 
@@ -229,3 +230,6 @@ Contributing is welcome.
 
 [deps]: https://david-dm.org/haan123/sfra-module-loader.svg
 [deps-url]: https://david-dm.org/haan123/sfra-module-loader
+
+[tests]: https://img.shields.io/circleci/project/github/haan123/sfra-module-loader.svg
+[tests-url]: https://circleci.com/gh/haan123/sfra-module-loader

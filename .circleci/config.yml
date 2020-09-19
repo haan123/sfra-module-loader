@@ -1,4 +1,6 @@
-version: 2
+version: 2.1
+orbs:
+  node: circleci/node@12.18.4
 jobs:
   test:
     machine: true
